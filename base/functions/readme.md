@@ -53,6 +53,20 @@ result := Add(5, 3)
 fmt.Println(result)  // 输出: 8
 ```
 
+#### 在go中，函数名称首字母大写是公有方法，首字母小写是私有方法。
+
+```go
+// 公共方法可以被外部调用
+func Add(a int, b int) int {
+    return a + b
+}
+// 私有方法不可以被外部调用
+func add(a int, b int) int {
+    return a + b
+}
+
+```
+
 ### 1.3 参数类型简写
 当多个参数类型相同时，可以简写：
 
@@ -510,3 +524,372 @@ func main() {
    // ✅ 依赖接口
    func Save(w io.Writer, data []byte) error { ... }
    ```
+---
+
+## init 函数与 import 机制 函数定义规则
+
+### init 函数
+- 可以在 `package main` 中定义
+- 可以在其他 package 中定义
+- 同一个 package 中可以出现多次
+- 定义时不能有任何参数和返回值
+- **最佳实践**：建议每个文件只写一个 init 函数，以提高可读性和可维护性
+
+### main 函数
+- 只能在 `package main` 中定义
+- 定义时不能有任何参数和返回值
+- 每个可执行程序必须包含一个 main 函数
+
+### 执行顺序
+
+Go 程序的初始化和执行遵循以下顺序：
+
+#### 1. 包导入阶段
+- 程序从 `main` 包开始
+- 递归导入 main 包依赖的所有包
+- 每个包只会被导入一次（即使被多个包同时引用）
+
+#### 2. 初始化顺序（对每个包）
+1. 初始化该包导入的其他包（递归进行）
+2. 初始化包级常量
+3. 初始化包级变量
+4. 执行 init 函数（如果存在）
+
+#### 3. main 包执行
+1. 初始化 main 包的包级常量和变量
+2. 执行 main 包的 init 函数（如果存在）
+3. 执行 main 函数
+
+### 执行流程图
+
+```
+导入包 A, B, C
+    ↓
+初始化包 A (常量 → 变量 → init())
+    ↓
+初始化包 B (常量 → 变量 → init())
+    ↓
+初始化包 C (常量 → 变量 → init())
+    ↓
+初始化 main 包 (常量 → 变量 → init())
+    ↓
+执行 main()
+```
+
+### 关键特性
+
+- **自动调用**：init() 和 main() 函数由 Go 运行时自动调用，无需手动调用
+- **可选性**：init 函数是可选的，但 package main 必须包含 main 函数
+- **执行保证**：所有依赖包的初始化完成后，才会开始执行 main 包的代码
+- init()函数只会初始化1次，有多个的话，按顺序执行
+
+### 示例
+
+```go
+package main
+
+import "fmt"
+
+// 包级变量初始化
+var globalVar = initGlobalVar()
+
+func initGlobalVar() string {
+    fmt.Println("初始化全局变量")
+    return "global"
+}
+
+// init 函数
+func init() {
+    fmt.Println("执行 init 函数")
+}
+
+// main 函数
+func main() {
+    fmt.Println("执行 main 函数")
+}
+```
+
+**输出顺序**：
+```
+初始化全局变量
+执行 init 函数
+执行 main 函数
+```
+---
+
+## Go 语言中的指针：引用传递与地址操作
+
+### 基本概念
+
+- **`&` 取地址符**：获取变量的内存地址
+- **`*` 指针符号**：
+  - 在类型声明中表示指针类型（如 `*int`）
+  - 在变量前表示解引用，获取指针指向的值
+
+---
+
+### 示例 1：基本的指针操作
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    // 声明一个普通变量
+    num := 42
+    
+    // 使用 & 获取变量的地址
+    ptr := &num
+    
+    fmt.Println("变量的值:", num)           // 输出: 42
+    fmt.Println("变量的地址:", &num)        // 输出: 0xc000012028 (示例地址)
+    fmt.Println("指针存储的地址:", ptr)      // 输出: 0xc000012028
+    fmt.Println("指针指向的值:", *ptr)      // 输出: 42
+    
+    // 通过指针修改原变量的值
+    *ptr = 100
+    fmt.Println("修改后的值:", num)         // 输出: 100
+}
+```
+
+**输出结果**：
+```
+变量的值: 42
+变量的地址: 0xc000012028
+指针存储的地址: 0xc000012028
+指针指向的值: 42
+修改后的值: 100
+```
+
+---
+
+### 示例 2：值传递 vs 引用传递
+
+### 值传递（传递副本）
+
+```go
+package main
+
+import "fmt"
+
+// 值传递：函数接收变量的副本
+func modifyValue(x int) {
+    x = 100
+    fmt.Println("函数内部的值:", x)
+}
+
+func main() {
+    num := 42
+    modifyValue(num)
+    fmt.Println("函数外部的值:", num)  // 原值不变
+}
+```
+
+**输出结果**：
+```
+函数内部的值: 100
+函数外部的值: 42
+```
+
+### 引用传递（传递指针）
+
+```go
+package main
+
+import "fmt"
+
+// 引用传递：函数接收变量的地址
+func modifyPointer(x *int) {
+    *x = 100
+    fmt.Println("函数内部的值:", *x)
+}
+
+func main() {
+    num := 42
+    modifyPointer(&num)  // 传递地址
+    fmt.Println("函数外部的值:", num)  // 原值被修改
+}
+```
+
+**输出结果**：
+```
+函数内部的值: 100
+函数外部的值: 100
+```
+
+---
+
+### 示例 3：结构体的指针传递
+
+```go
+package main
+
+import "fmt"
+
+type Person struct {
+    Name string
+    Age  int
+}
+
+// 值传递：修改不影响原结构体
+func updatePersonValue(p Person) {
+    p.Age = 30
+    fmt.Printf("函数内: %+v\n", p)
+}
+
+// 引用传递：修改会影响原结构体
+func updatePersonPointer(p *Person) {
+    p.Age = 30
+    fmt.Printf("函数内: %+v\n", *p)
+}
+
+func main() {
+    person1 := Person{Name: "Alice", Age: 25}
+    fmt.Println("=== 值传递 ===")
+    fmt.Printf("调用前: %+v\n", person1)
+    updatePersonValue(person1)
+    fmt.Printf("调用后: %+v\n", person1)
+    
+    fmt.Println("\n=== 引用传递 ===")
+    person2 := Person{Name: "Bob", Age: 25}
+    fmt.Printf("调用前: %+v\n", person2)
+    updatePersonPointer(&person2)
+    fmt.Printf("调用后: %+v\n", person2)
+}
+```
+
+**输出结果**：
+```
+=== 值传递 ===
+调用前: {Name:Alice Age:25}
+函数内: {Name:Alice Age:30}
+调用后: {Name:Alice Age:25}
+
+=== 引用传递 ===
+调用前: {Name:Bob Age:25}
+函数内: {Name:Bob Age:30}
+调用后: {Name:Bob Age:30}
+```
+
+---
+
+### 示例 4：切片的特殊性
+
+```go
+package main
+
+import "fmt"
+
+// 切片本身包含指向底层数组的指针
+func modifySlice(s []int) {
+    s[0] = 999  // 修改元素会影响原切片
+    fmt.Println("函数内:", s)
+}
+
+func appendSlice(s []int) {
+    s = append(s, 100)  // append 可能创建新数组，不影响原切片
+    fmt.Println("函数内追加后:", s)
+}
+
+func appendSlicePointer(s *[]int) {
+    *s = append(*s, 100)  // 通过指针修改原切片
+    fmt.Println("函数内追加后:", *s)
+}
+
+func main() {
+    nums := []int{1, 2, 3}
+    
+    fmt.Println("=== 修改切片元素 ===")
+    fmt.Println("原切片:", nums)
+    modifySlice(nums)
+    fmt.Println("修改后:", nums)
+    
+    fmt.Println("\n=== 追加元素（值传递）===")
+    nums2 := []int{1, 2, 3}
+    fmt.Println("原切片:", nums2)
+    appendSlice(nums2)
+    fmt.Println("追加后:", nums2)
+    
+    fmt.Println("\n=== 追加元素（指针传递）===")
+    nums3 := []int{1, 2, 3}
+    fmt.Println("原切片:", nums3)
+    appendSlicePointer(&nums3)
+    fmt.Println("追加后:", nums3)
+}
+```
+
+**输出结果**：
+```
+=== 修改切片元素 ===
+原切片: [1 2 3]
+函数内: [999 2 3]
+修改后: [999 2 3]
+
+=== 追加元素（值传递）===
+原切片: [1 2 3]
+函数内追加后: [1 2 3 100]
+追加后: [1 2 3]
+
+=== 追加元素（指针传递）===
+原切片: [1 2 3]
+函数内追加后: [1 2 3 100]
+追加后: [1 2 3 100]
+```
+
+---
+
+### 示例 5：指针的零值与判断
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    var ptr *int  // 声明指针，未初始化
+    
+    fmt.Println("未初始化的指针:", ptr)  // 输出: <nil>
+    
+    // 判断指针是否为空
+    if ptr == nil {
+        fmt.Println("指针为空，不能解引用")
+    }
+    
+    // 初始化指针
+    num := 42
+    ptr = &num
+    
+    if ptr != nil {
+        fmt.Println("指针不为空，值为:", *ptr)
+    }
+}
+```
+
+**输出结果**：
+```
+未初始化的指针: <nil>
+指针为空，不能解引用
+指针不为空，值为: 42
+```
+
+---
+
+### 总结对比
+
+| 特性 | 值传递 | 引用传递（指针） |
+|------|--------|------------------|
+| 参数类型 | `func(x int)` | `func(x *int)` |
+| 传递方式 | 传递变量的副本 | 传递变量的地址 |
+| 修改影响 | 不影响原变量 | 影响原变量 |
+| 内存开销 | 复制整个值 | 只复制地址（8字节） |
+| 使用场景 | 小数据、不需修改 | 大数据、需要修改 |
+| 调用方式 | `func(value)` | `func(&value)` |
+
+### 使用建议
+
+1. **小数据类型**（int、bool等）：值传递即可
+2. **大结构体**：使用指针传递以提高性能
+3. **需要修改原数据**：必须使用指针传递
+4. **切片、map、channel**：本身已包含引用，通常不需要显式传递指针
+5. **避免空指针**：使用指针前务必检查是否为 nil

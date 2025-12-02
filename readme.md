@@ -70,10 +70,11 @@
   - [示例代码](base/structs/shapes_test.go)
   - [官网教程](https://studygolang.gitbook.io/learn-go-with-tests/go-ji-chu/structs-methods-and-interfaces)
   - [常见问题](base/structs/questions/README.md)
-- func
+- func(函数)
   - [示例代码](base/functions/01-basics/)
   - [常见问题](base/functions/questions/README.md)
   - [方法声明的方式详细说明](base/functions/readme.md)
+- [defer](base/defer/defer.md)
 - [接口](https://go.dev/ref/spec#Interface_types)
 - 指针(pointer)和错误
   - [示例代码](base/pointers/wallet_test.go)

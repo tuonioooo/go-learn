@@ -244,6 +244,59 @@ strings.ToUpper("bye bye ") + "see you!"
 
 ---
 
+## 字符串的底层结构
+
+Go 中的字符串在底层是一个结构体，定义在 `runtime` 包中：
+
+```go
+type stringStruct struct {
+    str unsafe.Pointer  // 指向底层字节数组的指针
+    len int             // 字符串的长度（字节数）
+}
+```
+
+## 占用的字节数
+
+**字符串类型本身占用 16 个字节**（在 64 位系统上）：
+
+- **指针部分**：8 字节（`unsafe.Pointer`）
+- **长度部分**：8 字节（`int` 类型在 64 位系统上是 8 字节）
+
+在 32 位系统上则占用 8 个字节（指针 4 字节 + int 4 字节）。
+
+## 关键特性
+
+1. **字符串头部是固定大小**：无论字符串内容多长，字符串变量本身始终占用 16 字节（64位系统）
+
+2. **实际数据存储在别处**：指针指向的底层字节数组存储在堆或只读数据段中，不计入字符串结构体本身的大小
+
+3. **不可变性**：Go 的字符串是不可变的，多个字符串可以安全地共享同一个底层字节数组
+
+4. **高效传递**：由于字符串只是 16 字节的结构体，传递字符串时只复制这个小结构，不会复制底层数据
+
+示例验证：
+
+```go
+package main
+
+import (
+    "fmt"
+    "unsafe"
+)
+
+func main() {
+    var s1 string = "hello"
+    var s2 string = "this is a very long string"
+    
+    fmt.Println("Size of string type:", unsafe.Sizeof(s1))  // 输出: 16
+    fmt.Println("Size of string type:", unsafe.Sizeof(s2))  // 输出: 16
+    fmt.Println("Length of s1:", len(s1))                   // 输出: 5
+    fmt.Println("Length of s2:", len(s2))                   // 输出: 26
+}
+```
+
+---
+
 ## 关键要点总结
 
 ### 字符串字面量
